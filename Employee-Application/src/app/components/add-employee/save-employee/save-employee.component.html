@@ -1,0 +1,149 @@
+<div class="text-center text-4xl m-5 text-green-600 border-b-2 p-2 font-bold">
+  <h2>Save Employee</h2>
+</div>
+<h2
+  class="text-center text-xl font-semibold bg-gray-300 m-2 p-2 text-indigo-700"
+>
+  Enter Employee Details
+</h2>
+<div
+  *ngIf="isFetching; else elseblock"
+  class="w-full h-full flex justify-center items-center"
+>
+  <div class="w-40 h-40">
+    <p-progressSpinner></p-progressSpinner>
+  </div>
+</div>
+<ng-template #elseblock>
+  <div class="card" *ngIf="hasError">
+    <p-messages
+      [(value)]="messages1"
+      [enableService]="true"
+      [closable]="true"
+    ></p-messages>
+  </div>
+  <div class="card" *ngIf="isSuccess">
+    <p-messages
+      [(value)]="messages2"
+      [enableService]="true"
+      [closable]="true"
+    ></p-messages>
+  </div>
+
+  <hr class="border-1 m-2 border-blue-800" />
+  <div class="flex justify-center min-w-full">
+    <form
+      #login="ngForm"
+      class="grid grid-cols-2 m-5 w-full pl-40"
+      (click)="submit(login)"
+      novalidate
+      (submit)="submitData(login)"
+    >
+      <div class="">
+        <label for="firstname">FirstName</label>
+        <div class="card flex justify-content-center">
+          <input type="text" name="firstname" pInputText ngModel />
+        </div>
+      </div>
+      <div class="">
+        <label for="lastname">LastName</label>
+        <div class="card flex justify-content-center">
+          <input type="text" name="lastname" pInputText ngModel />
+        </div>
+      </div>
+      <div class="">
+        <label for="department">department</label>
+        <div class="card flex justify-content-center">
+          <input type="text" name="department" pInputText ngModel />
+        </div>
+      </div>
+      <div class="">
+        <label for="salary">Salary</label>
+        <div class="card flex justify-content-center">
+          <input
+            type="number"
+            name="salary"
+            class="text_fields"
+            pInputText
+            [defaultValue]="0"
+            ngModel
+          />
+        </div>
+      </div>
+      <div class="col-span-2">
+        <label for="experience">Experience</label>
+        <div class="card flex justify-content-center">
+          <input
+            type="number"
+            name="experience"
+            pInputText
+            [defaultValue]="0"
+            ngModel
+          />
+        </div>
+      </div>
+
+      <div
+        class="col-span-2 text-blue-800 font-semibold text-xl mt-2 m-4 p-1.5 bg-gray-200"
+      >
+        <h4>Address</h4>
+      </div>
+      <div class="col-span-2">
+        <label for="street">Street</label>
+        <div class="card flex justify-content-center">
+          <input
+            type="text"
+            style="width: 68.5%"
+            class=""
+            name="street"
+            pInputText
+            ngModel
+          />
+        </div>
+      </div>
+      <div>
+        <label for="city">City</label>
+
+        <div class="card flex justify-content-center">
+          <input type="text" name="city" pInputText ngModel />
+        </div>
+      </div>
+      <div class="">
+        <label for="pincode ">PinCode</label>
+        <div class="card flex justify-content-center">
+          <input
+            type="number"
+            name="pincode"
+            pInputText
+            [defaultValue]="0"
+            ngModel
+          />
+        </div>
+      </div>
+      <div
+        class="col-span-2 text-blue-800 font-semibold text-xl mt-2 m-4 p-1.5 bg-gray-200"
+      >
+        <h4 class="">Courses</h4>
+      </div>
+      <div class="col-span-2">
+        <label for="course">Courses</label>
+        <div class="card">
+          <span class="p-fluid">
+            <p-autoComplete
+              name="course"
+              [(ngModel)]="selectedCountries"
+              [suggestions]="filteredCountries"
+              (completeMethod)="filterCountry($event)"
+              field="name"
+              [multiple]="true"
+            >
+            </p-autoComplete>
+          </span>
+        </div>
+      </div>
+      <div class="card flex justify-content-center mt-5">
+        <p-button label="Submit" type="submit" [disabled]="value"></p-button>
+      </div>
+    </form>
+  </div>
+</ng-template>

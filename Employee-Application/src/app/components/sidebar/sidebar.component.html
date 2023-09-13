@@ -1,0 +1,30 @@
+<div class="flex flex-col" (mouseenter)="open()" (mouseleave)="close()">
+  <div
+    [ngClass]="val ? 'w-max' : 'flex justify-end p-2'"
+    class="flex justify-end p-2"
+  >
+    <div *ngIf="val; else elseblock">
+      <p-button styleClass="p-button-primary" type="button" (onClick)="open()"
+        ><i class="pi pi-bars" style="color: black"></i>
+      </p-button>
+    </div>
+    <ng-template #elseblock>
+      <p-button
+        label="X"
+        styleClass="p-button-danger"
+        type="button"
+        (onClick)="close()"
+      ></p-button>
+    </ng-template>
+  </div>
+  <div *ngIf="!val" class="flex justify-center c p-2">
+    <div class="card flex justify-content-center border-0">
+      <p-tieredMenu
+        [model]="items"
+        class="border-0"
+        [style]="{ border: '0px' }"
+      >
+      </p-tieredMenu>
+    </div>
+  </div>
+</div>

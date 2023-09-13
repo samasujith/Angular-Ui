@@ -1,0 +1,35 @@
+<h2 class="text-center font-semibold text-2xl m-4 text-purple-900">
+  Update Employee
+</h2>
+<hr class="m-5" />
+<div class="card" *ngIf="hasError">
+  <p-messages
+    [(value)]="messages1"
+    [enableService]="true"
+    [closable]="true"
+  ></p-messages>
+</div>
+<div class="card" *ngIf="isSuccess">
+  <p-messages
+    [(value)]="messages2"
+    [enableService]="true"
+    [closable]="true"
+  ></p-messages>
+</div>
+<div class="card flex flex-row justify-center">
+  <div class="flex">
+    <form #formval="ngForm" class="flex" (ngSubmit)="submit(formval)">
+      <div class="p-2">
+        <label>Enter Id </label
+        ><input type="number" name="id" pInputText ngModel />
+      </div>
+      <div class="p-2">
+        <label>Enter salary </label
+        ><input type="text" name="salary" pInputText ngModel />
+      </div>
+      <div class="p-2">
+        <p-button label="submit" type="submit"></p-button>
+      </div>
+    </form>
+  </div>
+</div>
