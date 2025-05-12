@@ -26,14 +26,16 @@ jobs:
       - name: Get PR details
         id: get_pr_details
         run: |
-          # Get the PR title and commit SHAs from the PR
+          # Get the PR title, PR branch name, and commit SHAs from the PR
           PR_NUMBER=${{ github.event.pull_request.number }}
           PR_TITLE="${{ github.event.pull_request.title }} (QA)"
+          PR_BRANCH="${{ github.event.pull_request.head.ref }}"  # Get the PR branch name
           commits=$(curl -s \
             -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             "https://api.github.com/repos/${{ github.repository }}/pulls/${PR_NUMBER}/commits" | jq -r '.[].sha')
 
           echo "PR_TITLE=$PR_TITLE" >> $GITHUB_ENV
+          echo "PR_BRANCH=$PR_BRANCH" >> $GITHUB_ENV
           echo "COMMITS=$commits" >> $GITHUB_ENV
 
       - name: Fetch all branches and commits
@@ -41,11 +43,11 @@ jobs:
           # Fetch all branches and commits to ensure we have the full history
           git fetch --all
 
-      - name: Create a new branch for QA
+      - name: Create a new branch on QA with the PR branch name
         run: |
           # Make sure the QA branch exists (case-sensitive check)
           git fetch origin "QA"
-          git checkout -b pr-to-qa origin/QA
+          git checkout -b ${{ env.PR_BRANCH }} origin/QA  # Create a new branch with the PR branch name
 
       - name: Cherry-pick commits from PR
         run: |
@@ -60,10 +62,10 @@ jobs:
             }
           done
 
-      - name: Push changes to new branch
+      - name: Push changes to new branch on QA
         run: |
-          # Push the new branch to the remote
-          git push origin pr-to-qa
+          # Push the new branch with the PR branch name to the remote
+          git push origin ${{ env.PR_BRANCH }}
 
       - name: Create Pull Request to QA
         uses: actions/github-script@v7
@@ -71,11 +73,11 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const { owner, repo } = context.repo;
-            const headBranch = "pr-to-qa";   // The branch with cherry-picked commits
-            const baseBranch = "QA";         // Target branch (case-sensitive, update if yours is different)
-            const prTitle = process.env.PR_TITLE; // PR title from the original PR
+            const headBranch = process.env.PR_BRANCH;   // The branch with cherry-picked commits
+            const baseBranch = "QA";                    // Target branch (case-sensitive)
+            const prTitle = process.env.PR_TITLE;      // PR title from the original PR
 
-            // Check if a PR from pr-to-qa to QA already exists
+            // Check if a PR from the new branch to QA already exists
             const { data: existingPRs } = await github.rest.pulls.list({
               owner,
               repo,
@@ -95,5 +97,5 @@ jobs:
               });
               console.log(`✅ Created PR: ${response.data.html_url}`);
             } else {
-              console.log("ℹ️ A PR from pr-to-qa to QA already exists.");
+              console.log("ℹ️ A PR from ${headBranch} to QA already exists.");
             }
