@@ -33,7 +33,6 @@ jobs:
           commits=$(curl -s \
             -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             "https://api.github.com/repos/${{ github.repository }}/pulls/${PR_NUMBER}/commits" | jq -r '.[].sha')
-
           echo "PR_TITLE=$PR_TITLE" >> $GITHUB_ENV
           echo "PR_BRANCH=$PR_BRANCH" >> $GITHUB_ENV
           echo "COMMITS=$commits" >> $GITHUB_ENV
@@ -53,7 +52,8 @@ jobs:
         run: |
           # Create a new branch from qa using the same name as the PR source branch
           NEW_BRANCH="pr-to-qa-${{ env.PR_BRANCH }}"  # Use the source branch name from the PR
-          git checkout -b $NEW_BRANCH
+          echo "NEW_BRANCH=$NEW_BRANCH" >> $GITHUB_ENV  # Set the variable in the environment
+          git checkout -b $NEW_BRANCH  # Create and switch to the new branch
 
       - name: Cherry-pick commits from PR
         run: |
@@ -68,10 +68,16 @@ jobs:
             }
           done
 
-      - name: Push changes to new branch on qa
+      - name: Push the new branch to the remote
         run: |
-          # Push the new branch to the remote and set the upstream
+          # Push the new branch to the remote repository
           echo "Pushing the new branch: $NEW_BRANCH"
+          git push origin $NEW_BRANCH
+
+      - name: Set upstream and push changes
+        run: |
+          # After the initial push, set the upstream for the new branch
+          echo "Setting upstream for branch $NEW_BRANCH"
           git push --set-upstream origin $NEW_BRANCH
 
       - name: Create Pull Request to qa
@@ -83,7 +89,6 @@ jobs:
             const headBranch = process.env.NEW_BRANCH;   // The branch with cherry-picked commits
             const baseBranch = "qa";                    // Target branch (case-sensitive)
             const prTitle = process.env.PR_TITLE;      // PR title from the original PR
-
             // Check if a PR from the new branch to qa already exists
             const { data: existingPRs } = await github.rest.pulls.list({
               owner,
@@ -92,7 +97,6 @@ jobs:
               base: baseBranch,
               state: "open"
             });
-
             if (existingPRs.length === 0) {
               const response = await github.rest.pulls.create({
                 owner,
