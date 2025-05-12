@@ -30,12 +30,16 @@ jobs:
           PR_NUMBER=${{ github.event.pull_request.number }}
           PR_TITLE="${{ github.event.pull_request.title }} (QA)"
           PR_BRANCH="${{ github.event.pull_request.head.ref }}"
-          commits=$(curl -s \
-            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            "https://api.github.com/repos/${{ github.repository }}/pulls/${PR_NUMBER}/commits" | jq -r '.[].sha')
+
+          # Save PR title and branch to environment
           echo "PR_TITLE=$PR_TITLE" >> $GITHUB_ENV
           echo "PR_BRANCH=$PR_BRANCH" >> $GITHUB_ENV
-          echo "COMMITS=$commits" >> $GITHUB_ENV
+
+          # Save commit SHAs to a file
+          curl -s \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/pulls/${PR_NUMBER}/commits" \
+            | jq -r '.[].sha' > commit_shas.txt
 
       - name: Fetch all branches and commits
         run: git fetch --all
@@ -49,22 +53,21 @@ jobs:
         run: |
           NEW_BRANCH="${{ env.PR_BRANCH }}-qa"
           echo "NEW_BRANCH=$NEW_BRANCH" >> $GITHUB_ENV
-          git checkout -b $NEW_BRANCH
+          git checkout -b "$NEW_BRANCH"
 
       - name: Cherry-pick commits from PR
         run: |
-          for commit in ${{ env.COMMITS }}
-          do
+          while IFS= read -r commit; do
             echo "Cherry-picking commit: $commit"
-            git cherry-pick $commit || {
+            git cherry-pick "$commit" || {
               echo "Cherry-pick failed for commit $commit, aborting."
               git cherry-pick --abort
               exit 1
             }
-          done
+          done < commit_shas.txt
 
       - name: Push the new branch to the remote
-        run: git push --set-upstream origin $NEW_BRANCH
+        run: git push --set-upstream origin "${{ env.NEW_BRANCH }}"
 
       - name: Create Pull Request to qa
         uses: actions/github-script@v7
@@ -95,5 +98,5 @@ jobs:
               });
               console.log(`✅ Created PR: ${response.data.html_url}`);
             } else {
-              console.log(`ℹ️ A PR from ${headBranch} to qa already exists.`);
+              console.log(`ℹ️ A PR from ${headBranch} to ${baseBranch} already exists.`);
             }
