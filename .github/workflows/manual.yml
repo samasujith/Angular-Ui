@@ -47,7 +47,7 @@ jobs:
 
       - name: Create a new branch from qa using PR branch name
         run: |
-          NEW_BRANCH="pr-to-qa-${{ env.PR_BRANCH }}"
+          NEW_BRANCH="${{ env.PR_BRANCH }}-qa"
           echo "NEW_BRANCH=$NEW_BRANCH" >> $GITHUB_ENV
           git checkout -b $NEW_BRANCH
 
