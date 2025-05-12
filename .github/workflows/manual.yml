@@ -71,6 +71,7 @@ jobs:
       - name: Push changes to new branch on qa
         run: |
           # Push the new branch to the remote and set the upstream
+          echo "Pushing the new branch: $NEW_BRANCH"
           git push --set-upstream origin $NEW_BRANCH
 
       - name: Create Pull Request to qa
