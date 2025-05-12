@@ -24,49 +24,41 @@ jobs:
           git config --global user.name 'github-actions'
           git config --global user.email 'github-actions@github.com'
 
-      - name: Get PR details
-        id: get_pr_details
+      - name: Fetch full history
+        run: git fetch --all
+
+      - name: Identify merge commit
+        id: identify_merge_commit
         run: |
-          PR_NUMBER=${{ github.event.pull_request.number }}
+          # Get the last commit SHA on develop (the merge commit)
+          MERGE_COMMIT_SHA=$(git rev-parse origin/develop)
           PR_TITLE="${{ github.event.pull_request.title }} (QA)"
           PR_BRANCH="${{ github.event.pull_request.head.ref }}"
-
-          # Save PR title and branch to environment
+          
+          echo "MERGE_COMMIT_SHA=$MERGE_COMMIT_SHA" >> $GITHUB_ENV
           echo "PR_TITLE=$PR_TITLE" >> $GITHUB_ENV
           echo "PR_BRANCH=$PR_BRANCH" >> $GITHUB_ENV
 
-          # Save commit SHAs to a file
-          curl -s \
-            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            "https://api.github.com/repos/${{ github.repository }}/pulls/${PR_NUMBER}/commits" \
-            | jq -r '.[].sha' > commit_shas.txt
-
-      - name: Fetch all branches and commits
-        run: git fetch --all
-
       - name: Checkout qa branch
         run: |
-          git fetch origin qa
-          git checkout qa
+          git checkout origin/qa -b qa
 
-      - name: Create a new branch from qa using PR branch name
+      - name: Create a new branch from qa
         run: |
           NEW_BRANCH="${{ env.PR_BRANCH }}-qa"
           echo "NEW_BRANCH=$NEW_BRANCH" >> $GITHUB_ENV
           git checkout -b "$NEW_BRANCH"
 
-      - name: Cherry-pick commits from PR
+      - name: Cherry-pick the merge commit
         run: |
-          while IFS= read -r commit; do
-            echo "Cherry-picking commit: $commit"
-            git cherry-pick "$commit" || {
-              echo "Cherry-pick failed for commit $commit, aborting."
-              git cherry-pick --abort
-              exit 1
-            }
-          done < commit_shas.txt
+          # Cherry-pick the merge commit using mainline strategy
+          git cherry-pick -m 1 "${{ env.MERGE_COMMIT_SHA }}" || {
+            echo "Cherry-pick failed. Aborting."
+            git cherry-pick --abort
+            exit 1
+          }
 
-      - name: Push the new branch to the remote
+      - name: Push new branch
         run: git push --set-upstream origin "${{ env.NEW_BRANCH }}"
 
       - name: Create Pull Request to qa
