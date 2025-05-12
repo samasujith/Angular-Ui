@@ -5,6 +5,10 @@ on:
     branches:
       - develop
 
+permissions:
+  contents: write
+  pull-requests: write
+
 jobs:
   create-pr-to-qa:
     runs-on: ubuntu-latest
@@ -23,24 +27,27 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
+            const { owner, repo } = context.repo;
+
+            // Check if an open PR already exists from develop to QA
             const { data: existingPRs } = await github.rest.pulls.list({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              head: `${context.repo.owner}:develop`,
+              owner,
+              repo,
+              head: `${owner}:develop`,
               base: "QA",
               state: "open"
             });
 
             if (existingPRs.length === 0) {
               const response = await github.rest.pulls.create({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
+                owner,
+                repo,
                 title: "Auto PR: Merge develop into QA",
                 head: "develop",
                 base: "QA",
                 body: "This pull request was automatically created to merge the latest changes from `develop` into `QA`."
               });
-              console.log(`Created PR: ${response.data.html_url}`);
+              console.log(`✅ Created PR: ${response.data.html_url}`);
             } else {
-              console.log("A PR from develop to QA already exists.");
+              console.log("ℹ️ A PR from develop to QA already exists.");
             }
