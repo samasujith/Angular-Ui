@@ -1,8 +1,8 @@
-name: Auto PR to qa on PR Creation
+name: Auto PR to qa on Merge to Develop
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
+    types: [closed]
     branches:
       - develop
 
@@ -12,6 +12,7 @@ permissions:
 
 jobs:
   create-pr-to-qa:
+    if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
 
     steps:
@@ -26,10 +27,9 @@ jobs:
       - name: Get PR details
         id: get_pr_details
         run: |
-          # Get the PR title, PR branch name, and commit SHAs from the PR
           PR_NUMBER=${{ github.event.pull_request.number }}
           PR_TITLE="${{ github.event.pull_request.title }} (QA)"
-          PR_BRANCH="${{ github.event.pull_request.head.ref }}"  # Get the name of the source branch
+          PR_BRANCH="${{ github.event.pull_request.head.ref }}"
           commits=$(curl -s \
             -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             "https://api.github.com/repos/${{ github.repository }}/pulls/${PR_NUMBER}/commits" | jq -r '.[].sha')
@@ -38,47 +38,33 @@ jobs:
           echo "COMMITS=$commits" >> $GITHUB_ENV
 
       - name: Fetch all branches and commits
-        run: |
-          # Fetch all branches and commits to ensure we have the full history
-          git fetch --all
+        run: git fetch --all
 
       - name: Checkout qa branch
         run: |
-          # Ensure we are on the qa branch (case-sensitive check)
-          git fetch origin "qa"
+          git fetch origin qa
           git checkout qa
 
       - name: Create a new branch from qa using PR branch name
         run: |
-          # Create a new branch from qa using the same name as the PR source branch
-          NEW_BRANCH="pr-to-qa-${{ env.PR_BRANCH }}"  # Use the source branch name from the PR
-          echo "NEW_BRANCH=$NEW_BRANCH" >> $GITHUB_ENV  # Set the variable in the environment
-          git checkout -b $NEW_BRANCH  # Create and switch to the new branch
+          NEW_BRANCH="pr-to-qa-${{ env.PR_BRANCH }}"
+          echo "NEW_BRANCH=$NEW_BRANCH" >> $GITHUB_ENV
+          git checkout -b $NEW_BRANCH
 
       - name: Cherry-pick commits from PR
         run: |
-          # Cherry-pick each commit
           for commit in ${{ env.COMMITS }}
           do
             echo "Cherry-picking commit: $commit"
-            git cherry-pick $commit || { 
-              echo "Cherry-pick failed for commit $commit, aborting.";
-              git cherry-pick --abort;
-              exit 1;
+            git cherry-pick $commit || {
+              echo "Cherry-pick failed for commit $commit, aborting."
+              git cherry-pick --abort
+              exit 1
             }
           done
 
       - name: Push the new branch to the remote
-        run: |
-          # Push the new branch to the remote repository
-          echo "Pushing the new branch: $NEW_BRANCH"
-          git push origin $NEW_BRANCH
-
-      - name: Set upstream and push changes
-        run: |
-          # After the initial push, set the upstream for the new branch
-          echo "Setting upstream for branch $NEW_BRANCH"
-          git push --set-upstream origin $NEW_BRANCH
+        run: git push --set-upstream origin $NEW_BRANCH
 
       - name: Create Pull Request to qa
         uses: actions/github-script@v7
@@ -86,10 +72,10 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const { owner, repo } = context.repo;
-            const headBranch = process.env.NEW_BRANCH;   // The branch with cherry-picked commits
-            const baseBranch = "qa";                    // Target branch (case-sensitive)
-            const prTitle = process.env.PR_TITLE;      // PR title from the original PR
-            // Check if a PR from the new branch to qa already exists
+            const headBranch = process.env.NEW_BRANCH;
+            const baseBranch = "qa";
+            const prTitle = process.env.PR_TITLE;
+
             const { data: existingPRs } = await github.rest.pulls.list({
               owner,
               repo,
@@ -97,16 +83,17 @@ jobs:
               base: baseBranch,
               state: "open"
             });
+
             if (existingPRs.length === 0) {
               const response = await github.rest.pulls.create({
                 owner,
                 repo,
-                title: prTitle, // Use the original PR title for the new PR
+                title: prTitle,
                 head: headBranch,
                 base: baseBranch,
-                body: `This PR was automatically created from a PR raised against develop. Original PR title: "${prTitle}".`
+                body: `This PR was automatically created after merging a PR to develop. Original PR title: "${prTitle}".`
               });
               console.log(`✅ Created PR: ${response.data.html_url}`);
             } else {
-              console.log("ℹ️ A PR from ${headBranch} to qa already exists.");
+              console.log(`ℹ️ A PR from ${headBranch} to qa already exists.`);
             }
