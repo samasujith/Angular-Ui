@@ -36,18 +36,28 @@ jobs:
           echo "PR_TITLE=$PR_TITLE" >> $GITHUB_ENV
           echo "COMMITS=$commits" >> $GITHUB_ENV
 
+      - name: Fetch all branches and commits
+        run: |
+          # Fetch all branches and commits to ensure we have the full history
+          git fetch --all
+
       - name: Create a new branch for QA
         run: |
-          # Create a new branch from QA
-          git fetch origin qa
-          git checkout -b pr-to-qa origin/qa
+          # Make sure the QA branch exists (case-sensitive check)
+          git fetch origin "QA"
+          git checkout -b pr-to-qa origin/QA
 
       - name: Cherry-pick commits from PR
         run: |
           # Cherry-pick each commit
           for commit in ${{ env.COMMITS }}
           do
-            git cherry-pick $commit || { echo "Cherry-pick failed, aborting."; git cherry-pick --abort; exit 1; }
+            echo "Cherry-picking commit: $commit"
+            git cherry-pick $commit || { 
+              echo "Cherry-pick failed for commit $commit, aborting.";
+              git cherry-pick --abort;
+              exit 1;
+            }
           done
 
       - name: Push changes to new branch
@@ -62,10 +72,10 @@ jobs:
           script: |
             const { owner, repo } = context.repo;
             const headBranch = "pr-to-qa";   // The branch with cherry-picked commits
-            const baseBranch = "qa";         // Target branch (update if yours is 'QA')
+            const baseBranch = "QA";         // Target branch (case-sensitive, update if yours is different)
             const prTitle = process.env.PR_TITLE; // PR title from the original PR
 
-            // Check if a PR from pr-to-qa to qa already exists
+            // Check if a PR from pr-to-qa to QA already exists
             const { data: existingPRs } = await github.rest.pulls.list({
               owner,
               repo,
@@ -85,5 +95,5 @@ jobs:
               });
               console.log(`✅ Created PR: ${response.data.html_url}`);
             } else {
-              console.log("ℹ️ A PR from pr-to-qa to qa already exists.");
+              console.log("ℹ️ A PR from pr-to-qa to QA already exists.");
             }
